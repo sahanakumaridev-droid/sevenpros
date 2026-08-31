@@ -1,0 +1,22 @@
+# dependencies
+frontend/node_modules/
+backend/venv/
+.venv/
+
+# env and secrets
+.env
+.env.*
+!.env.example
+backend/.env
+
+# build
+frontend/dist/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# tooling
+.vercel
+backend/.vercel
+.DS_Store
+*.log
