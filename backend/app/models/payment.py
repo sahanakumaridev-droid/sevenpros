@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, String
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -23,3 +23,19 @@ class Payment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     booking = relationship("Booking", back_populates="payments")
+
+
+class CheckoutOrder(Base):
+    """One review-and-confirm order. Confirming it delivers the purchase once."""
+
+    __tablename__ = "checkout_orders"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=gen_uuid)
+    user_id: Mapped[str] = mapped_column(String, index=True)
+    purpose: Mapped[str] = mapped_column(String)
+    pack: Mapped[str] = mapped_column(String, default="")
+    booking_id: Mapped[str] = mapped_column(String, default="")
+    amount_cents: Mapped[int] = mapped_column(Integer, default=0)
+    label: Mapped[str] = mapped_column(String, default="")
+    status: Mapped[str] = mapped_column(String, default="open")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

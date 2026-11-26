@@ -1,34 +1,19 @@
-import { NavLink } from "react-router-dom";
+import DashboardShell from "./DashboardShell";
 
-const TABS = [
-  { to: "/pro/dashboard", label: "Overview" },
-  { to: "/pro/services", label: "Services" },
-  { to: "/pro/bookings", label: "Bookings" },
-  { to: "/pro/profile", label: "Business Profile" },
-];
-
-export default function ProDashboardLayout({ title, children }) {
+export default function ProDashboardLayout({ title, subtitle, wide, children }) {
   return (
-    <div className="container-page py-8">
-      <h1 className="text-2xl font-semibold text-ink mb-6">{title}</h1>
-      <div className="flex flex-col md:flex-row gap-8">
-        <nav className="w-full md:w-48 shrink-0 flex md:flex-col gap-1 overflow-x-auto">
-          {TABS.map((t) => (
-            <NavLink
-              key={t.to}
-              to={t.to}
-              className={({ isActive }) =>
-                `px-3 py-2 rounded-[3px] text-sm font-medium whitespace-nowrap ${
-                  isActive ? "bg-brand-50 text-brand-400" : "text-muted hover:bg-raised"
-                }`
-              }
-            >
-              {t.label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="flex-1 min-w-0">{children}</div>
+    <DashboardShell role="pro" title={title}>
+      <div
+        className={`light-page account-light mx-auto text-[#0b1220] ${wide ? "max-w-[1280px]" : "max-w-6xl"}`}
+      >
+        {(title || subtitle) && (
+          <div className="mb-6 hidden lg:block">
+            {title && <h1 className="text-[1.5rem] font-bold tracking-[-0.03em] text-[#0b1220]">{title}</h1>}
+            {subtitle && <p className="mt-1 text-sm text-[#64748b]">{subtitle}</p>}
+          </div>
+        )}
+        {children}
       </div>
-    </div>
+    </DashboardShell>
   );
 }

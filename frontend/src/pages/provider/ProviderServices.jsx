@@ -74,7 +74,7 @@ export default function ProviderServices() {
   };
 
   return (
-    <ProDashboardLayout title="Services">
+    <ProDashboardLayout title="Availability" subtitle="Manage services via /providers/me/services." wide>
       <div className="flex justify-end mb-4">
         <button
           onClick={() => {
@@ -92,7 +92,7 @@ export default function ProviderServices() {
         <form onSubmit={submit} className="border border-gray-200 rounded-xl p-5 mb-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-700">Category</label>
+              <label className="text-sm font-semibold text-[#14181d]">Category</label>
               <select
                 required
                 value={form.category_id}
@@ -108,7 +108,7 @@ export default function ProviderServices() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Title</label>
+              <label className="text-sm font-semibold text-[#14181d]">Title</label>
               <input
                 required
                 value={form.title}
@@ -118,7 +118,7 @@ export default function ProviderServices() {
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700">Description</label>
+            <label className="text-sm font-semibold text-[#14181d]">Description</label>
             <textarea
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -128,7 +128,7 @@ export default function ProviderServices() {
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-700">Price type</label>
+              <label className="text-sm font-semibold text-[#14181d]">Price type</label>
               <select
                 value={form.price_type}
                 onChange={(e) => setForm((f) => ({ ...f, price_type: e.target.value }))}
@@ -140,7 +140,7 @@ export default function ProviderServices() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Min price ($)</label>
+              <label className="text-sm font-semibold text-[#14181d]">Min price ($)</label>
               <input
                 type="number"
                 value={form.price_min}
@@ -149,7 +149,7 @@ export default function ProviderServices() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Max price ($)</label>
+              <label className="text-sm font-semibold text-[#14181d]">Max price ($)</label>
               <input
                 type="number"
                 value={form.price_max}
@@ -158,7 +158,7 @@ export default function ProviderServices() {
               />
             </div>
           </div>
-          <div className="flex gap-4 text-sm">
+          <div className="flex gap-4 text-sm font-semibold text-[#14181d]">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -191,13 +191,13 @@ export default function ProviderServices() {
       )}
 
       <div className="space-y-3">
-        {services.length === 0 && <p className="text-gray-400 text-sm">No services listed yet.</p>}
+        {services.length === 0 && <p className="text-sm font-medium text-[#3c4650]">No services listed yet.</p>}
         {services.map((s) => (
           <div key={s.id} className="border border-gray-200 rounded-lg p-4 flex items-center justify-between">
             <div>
-              <div className="font-semibold text-gray-900">{s.title}</div>
-              <div className="text-xs text-gray-500">{s.category.name}</div>
-              <div className="text-sm text-gray-600 mt-1">
+              <div className="font-semibold text-[#14181d]">{s.title}</div>
+              <div className="text-xs font-semibold text-[#3c4650]">{s.category.name}</div>
+              <div className="text-sm font-semibold text-[#14181d] mt-1">
                 {s.price_type === "quote" ? "Quote only" : `$${s.price_min}${s.price_max ? ` - $${s.price_max}` : ""}`}
               </div>
             </div>

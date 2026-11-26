@@ -4,12 +4,13 @@ import client from "../api/client";
 
 export default function AiAssistant() {
   const [open, setOpen] = useState(false);
+  const [role, setRole] = useState("");
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      text: "I’m the SEVENPROS matchmaker. Tell me the job — leaky faucet, AC, cleaning, painting — and I’ll rank verified California pros.",
+      text: "I’m SEVENPROS AI. Tell me the job id and your city, and I’ll rank pros for that job.",
       providers: [],
     },
   ]);
@@ -28,7 +29,7 @@ export default function AiAssistant() {
     setMessages((m) => [...m, { role: "user", text, providers: [] }]);
     setBusy(true);
     try {
-      const res = await client.post("/ai/chat", { message: text });
+      const res = await client.post("/ai/chat", { message: text, role });
       setMessages((m) => [
         ...m,
         { role: "assistant", text: res.data.reply, providers: res.data.providers || [] },
@@ -36,7 +37,7 @@ export default function AiAssistant() {
     } catch {
       setMessages((m) => [
         ...m,
-        { role: "assistant", text: "Matchmaker is offline. Start the backend on port 8000 and try again.", providers: [] },
+        { role: "assistant", text: "AI is offline. Try again in a moment.", providers: [] },
       ]);
     } finally {
       setBusy(false);
@@ -48,8 +49,8 @@ export default function AiAssistant() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="fixed z-50 right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] size-14 rounded-full bg-brand-grad text-white shadow-[0_12px_32px_rgba(46,49,146,0.45)]"
-        aria-label={open ? "Close AI matchmaker" : "Open AI matchmaker"}
+        className="fixed z-50 right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] grid size-14 place-items-center rounded-full bg-[#14181d] text-sm font-bold text-white shadow-[0_12px_32px_rgba(20,24,29,0.28)]"
+        aria-label={open ? "Close AI" : "Open AI"}
       >
         {open ? "×" : "AI"}
       </button>
@@ -62,10 +63,20 @@ export default function AiAssistant() {
               <p className="text-xs font-display font-bold tracking-[0.14em] uppercase text-white">
                 SEVEN<span className="text-brand-grad">PROS</span> AI
               </p>
-              <p className="text-[11px] text-white/50">Matchmaker · Best Match ranking</p>
+              <p className="text-[11px] text-white/50">AI · Best Match ranking</p>
             </div>
           </div>
           <div className="h-[340px] overflow-y-auto px-4 py-3 space-y-3">
+            {!role && (
+              <div>
+                <p className="text-sm text-white">Are you a customer or a pro?</p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setRole("customer")} className="h-11 rounded-xl bg-white text-sm font-semibold text-[#14181d]">Customer</button>
+                  <button type="button" onClick={() => setRole("pro")} className="h-11 rounded-xl bg-[#f5c400] text-sm font-semibold text-[#1a1400]">Pro</button>
+                </div>
+                <p className="mt-3 text-xs text-white/60">Matching uses the job id and your city.</p>
+              </div>
+            )}
             {messages.map((m, i) => (
               <div key={i} className={m.role === "user" ? "text-right" : ""}>
                 <div
@@ -103,7 +114,8 @@ export default function AiAssistant() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Describe the job…"
+              placeholder={role === "pro" ? "Job id and city" : "Job id and your city"}
+              disabled={!role}
               className="flex-1 rounded-xl px-3 py-2 text-sm"
             />
             <button type="submit" className="btn btn-primary h-10 px-4 rounded-xl">

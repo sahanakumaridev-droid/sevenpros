@@ -12,6 +12,18 @@ const GRADIENTS = [
   "from-rose-800 to-red-950",
 ];
 
+function categoryPhoto(name) {
+  const n = (name || "").toLowerCase();
+  if (n.includes("plumb") || n.includes("water")) return ["/categories/plumbing.jpg", "Plumber at work"];
+  if (n.includes("electric") || n.includes("security")) return ["/categories/electrical.jpg", "Electrician at work"];
+  if (n.includes("hvac") || n.includes("air") || n.includes("heat")) return ["/categories/hvac.jpg", "HVAC technician"];
+  if (n.includes("clean") || n.includes("carpet")) return ["/categories/cleaning.jpg", "Cleaner at work"];
+  if (n.includes("paint")) return ["/categories/painting.jpg", "Painter at work"];
+  if (n.includes("landscape") || n.includes("garden") || n.includes("lawn")) return ["/categories/landscaping.jpg", "Landscaper at work"];
+  if (n.includes("appliance") || n.includes("kitchen")) return ["/categories/appliance-repair.jpg", "Appliance repair"];
+  return ["/categories/handyman.jpg", "Home service professional"];
+}
+
 function gradientFor(id) {
   let hash = 0;
   for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) % GRADIENTS.length;
@@ -32,7 +44,11 @@ export default function ProviderCard({ provider, detailed = false }) {
   };
 
   const category = provider.services?.[0]?.category?.name;
-  const showPhoto = provider.cover_photo_url && !imgFailed;
+  const [fallbackPhoto, fallbackAlt] = categoryPhoto(category);
+  const remote = provider.cover_photo_url && !provider.cover_photo_url.includes("loremflickr.com");
+  const showPhoto = remote && !imgFailed;
+  const photo = showPhoto ? provider.cover_photo_url : fallbackPhoto;
+  const photoAlt = showPhoto ? "" : fallbackAlt;
   const serviceId = provider.services?.[0]?.id;
   const tags = (provider.services || [])
     .map((s) => s.category?.name)
@@ -42,23 +58,21 @@ export default function ProviderCard({ provider, detailed = false }) {
 
   if (detailed) {
     return (
-      <article className="overflow-hidden rounded-2xl bg-white border border-[#E6EEF7] shadow-[0_8px_24px_rgba(7,26,58,0.06)]">
+      <article className="overflow-hidden rounded-2xl bg-raised border border-line shadow-[0_8px_24px_rgba(7,26,58,0.06)]">
         <div className={`relative h-40 bg-gradient-to-br ${gradientFor(provider.id)}`}>
-          {showPhoto && (
-            <img
-              src={provider.cover_photo_url}
-              alt=""
+          <img
+              src={photo}
+              alt={photoAlt}
               onError={() => setImgFailed(true)}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover object-top"
             />
-          )}
           {provider.is_available && (
             <span className="absolute top-3 left-3 rounded-full bg-[#1BBF7A] text-white text-[11px] font-semibold px-2.5 py-1">
               Available Today
             </span>
           )}
           {provider.is_verified && (
-            <span className="absolute bottom-3 left-3 rounded-full bg-white text-blue text-[11px] font-semibold px-2.5 py-1">
+            <span className="absolute bottom-3 left-3 rounded-full bg-raised text-blue text-[11px] font-semibold px-2.5 py-1">
               Verified Pro
             </span>
           )}
@@ -66,19 +80,19 @@ export default function ProviderCard({ provider, detailed = false }) {
             type="button"
             onClick={toggleFav}
             aria-label={isFav ? "Remove from favorites" : "Save to favorites"}
-            className="absolute top-3 right-3 size-8 rounded-full bg-white/95 text-navy grid place-items-center shadow-sm"
+            className="absolute top-3 right-3 size-8 rounded-full bg-white/95 text-ink grid place-items-center shadow-sm"
           >
             {isFav ? "♥" : "♡"}
           </button>
         </div>
         <div className="p-4">
           <div className="flex items-start gap-2.5">
-            <div className="size-10 rounded-full bg-[#EEF4FB] flex items-center justify-center text-sm font-bold text-navy shrink-0">
+            <div className="size-10 rounded-full bg-overlay flex items-center justify-center text-sm font-bold text-ink shrink-0">
               {provider.business_name[0]}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <h3 className="text-[15px] font-bold text-navy truncate">{provider.business_name}</h3>
+                <h3 className="text-[15px] font-bold text-ink truncate">{provider.business_name}</h3>
                 {provider.is_verified && (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="shrink-0">
                     <circle cx="12" cy="12" r="10" fill="#00AEEF" />
@@ -98,7 +112,7 @@ export default function ProviderCard({ provider, detailed = false }) {
           {tags.length > 0 && (
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               {tags.map((tag) => (
-                <span key={tag} className="rounded-full bg-[#F0F5FB] text-navy/80 text-[11px] font-medium px-2 py-0.5">
+                <span key={tag} className="rounded-full bg-[#F1F5F9] px-2 py-0.5 text-[11px] font-medium text-[#475569]">
                   {tag}
                 </span>
               ))}
@@ -106,14 +120,14 @@ export default function ProviderCard({ provider, detailed = false }) {
           )}
           <div className="mt-3 flex items-center justify-between">
             <span className="text-[12px] text-slate">Starting at</span>
-            <span className="font-bold text-navy tabular-nums">
+            <span className="font-bold text-ink tabular-nums">
               {provider.starting_price != null ? `$${provider.starting_price}` : "Get quote"}
             </span>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <Link
               to={`/providers/${provider.id}`}
-              className="h-10 rounded-xl border border-[#D7E3F0] text-navy text-sm font-semibold inline-flex items-center justify-center hover:bg-[#F5F8FC]"
+              className="h-10 rounded-xl border border-line text-ink text-sm font-semibold inline-flex items-center justify-center hover:bg-overlay"
             >
               View Profile
             </Link>
@@ -131,20 +145,16 @@ export default function ProviderCard({ provider, detailed = false }) {
   }
 
   return (
-    <Link viewTransition to={`/providers/${provider.id}`} className="group lift pressable block overflow-hidden rounded-2xl bg-white border border-[#E6EEF7] shadow-[0_8px_24px_rgba(7,26,58,0.06)]">
+    <Link viewTransition to={`/providers/${provider.id}`} className="group lift pressable block overflow-hidden rounded-2xl bg-raised border border-line shadow-[0_8px_24px_rgba(7,26,58,0.06)]">
       <div className={`h-32 relative bg-gradient-to-br ${gradientFor(provider.id)}`}>
-        {showPhoto && (
-          <>
-            <img
-              src={provider.cover_photo_url}
-              alt=""
+        <img
+              src={photo}
+              alt={photoAlt}
               onError={() => setImgFailed(true)}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover object-top"
               style={{ viewTransitionName: `listing-photo-${provider.id}` }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
-          </>
-        )}
         <div className="relative h-full flex items-end p-3">
           {provider.is_verified && (
             <span className="bg-white/95 text-blue text-xs font-semibold px-2 py-1 rounded-full">
@@ -162,10 +172,10 @@ export default function ProviderCard({ provider, detailed = false }) {
       </div>
       <div className="p-4">
         <div className="flex items-center gap-2 mb-1">
-          <div className="size-8 rounded-full bg-[#F5F8FC] flex items-center justify-center text-sm font-bold text-navy">
+          <div className="size-8 rounded-full bg-overlay flex items-center justify-center text-sm font-bold text-ink">
             {provider.business_name[0]}
           </div>
-          <div className="text-sm font-semibold text-navy truncate">{provider.business_name}</div>
+          <div className="text-sm font-semibold text-ink truncate">{provider.business_name}</div>
         </div>
         {category && <div className="text-xs text-slate mb-2">{category}</div>}
         <p className="text-sm text-slate line-clamp-2 mb-2 min-h-[2.5rem]">{provider.tagline}</p>
@@ -175,9 +185,9 @@ export default function ProviderCard({ provider, detailed = false }) {
             <span className="text-xs text-faint tabular-nums">{provider.distance_km} km</span>
           )}
         </div>
-        <div className="mt-3 pt-3 border-t border-[#E6EEF7] flex items-center justify-between">
+        <div className="mt-3 pt-3 border-t border-line flex items-center justify-between">
           <span className="text-xs text-slate">Starting at</span>
-          <span className="font-bold text-navy tabular-nums">
+          <span className="font-bold text-ink tabular-nums">
             {provider.starting_price != null ? `$${provider.starting_price}` : "Get quote"}
           </span>
         </div>

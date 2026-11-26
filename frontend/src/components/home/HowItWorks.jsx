@@ -38,10 +38,10 @@ const STEPS = [
 
 export default function HowItWorks() {
   return (
-    <section className="bg-white py-14 md:py-20">
+    <section className="bg-white py-14 md:py-20 text-[#14181d]">
       <div className="container-page text-center">
         <p className="text-cyan text-xs font-bold tracking-[0.18em]">SIMPLE STEPS</p>
-        <h2 className="mt-2 text-[1.5rem] sm:text-3xl md:text-[34px] font-bold text-navy">How It Works</h2>
+        <h2 className="mt-2 text-[1.5rem] sm:text-3xl md:text-[34px] font-bold text-[#14181d]">How It Works</h2>
         <p className="mt-2 text-slate">Get your job done in 4 easy steps.</p>
 
         <ol className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-4">
@@ -58,7 +58,7 @@ export default function HowItWorks() {
                   {step.icon}
                 </svg>
               </div>
-              <h3 className="mt-4 font-bold text-navy">
+              <h3 className="mt-4 font-bold text-[#14181d]">
                 {step.n}. {step.title}
               </h3>
               <p className="mt-1 text-sm text-slate max-w-[200px]">{step.body}</p>

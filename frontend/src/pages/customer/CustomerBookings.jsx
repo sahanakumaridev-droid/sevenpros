@@ -5,17 +5,17 @@ import AccountLayout from "../../components/AccountLayout";
 
 const FILTERS = [
   { id: "all", label: "All" },
-  { id: "upcoming", label: "Upcoming" },
+  { id: "upcoming", label: "In Progress" },
   { id: "completed", label: "Completed" },
   { id: "cancelled", label: "Cancelled" },
 ];
 
 const STATUS = {
   pending: { label: "Pending", className: "bg-[#FFF6E5] text-[#B45309]" },
-  accepted: { label: "Accepted", className: "bg-[#E8F7FE] text-[#0369A1]" },
+  accepted: { label: "Accepted", className: "bg-[#DBEAFE] text-[#1D4ED8]" },
   in_progress: { label: "In progress", className: "bg-[#EEE8FF] text-[#6D28D9]" },
   completed: { label: "Completed", className: "bg-[#E9F9F1] text-[#047857]" },
-  cancelled: { label: "Cancelled", className: "bg-[#F4F7FB] text-slate" },
+  cancelled: { label: "Cancelled", className: "bg-[#F1F5F9] text-[#64748b]" },
   rejected: { label: "Declined", className: "bg-[#FDECEC] text-[#B91C1C]" },
 };
 
@@ -71,15 +71,17 @@ export default function CustomerBookings() {
   };
 
   return (
-    <AccountLayout title="My Bookings" subtitle="Track jobs, payments, and reviews in one place.">
+    <AccountLayout title="My Projects" subtitle="Track jobs, payments, and reviews in one place.">
       <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
         {FILTERS.map((f) => (
           <button
             key={f.id}
             type="button"
             onClick={() => setFilter(f.id)}
-            className={`pressable shrink-0 h-9 rounded-full px-3.5 text-sm font-semibold ${
-              filter === f.id ? "bg-navy text-white" : "bg-white border border-[#E6EEF7] text-navy/70"
+            className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-semibold transition-transform active:scale-[0.98] ${
+              filter === f.id
+                ? "bg-[#5b46f5] text-white"
+                : "border border-[#E7EAF0] bg-white text-[#64748b]"
             }`}
           >
             {f.label}
@@ -91,7 +93,7 @@ export default function CustomerBookings() {
       {loading && (
         <div className="mt-5 space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-[#E6EEF7] bg-white p-5">
+            <div key={i} className="rounded-2xl border border-[#E7EAF0] bg-white p-5 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
               <div className="skeleton h-5 w-1/3" />
               <div className="skeleton h-4 w-1/2 mt-3" />
               <div className="skeleton h-10 w-full mt-5" />
@@ -101,10 +103,13 @@ export default function CustomerBookings() {
       )}
 
       {!loading && visible.length === 0 && (
-        <div className="mt-5 rounded-2xl border border-[#E6EEF7] bg-white px-6 py-16 text-center">
-          <p className="font-bold text-lg">No bookings here yet</p>
-          <p className="mt-1 text-slate">Find a verified pro and schedule your next job.</p>
-          <Link to="/search" className="btn btn-primary inline-flex mt-5 h-11 px-5 rounded-xl">
+        <div className="mt-5 rounded-[24px] border border-[#E7EAF0] bg-white px-6 py-16 text-center shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
+          <p className="text-lg font-bold text-[#0b1220]">No bookings here yet</p>
+          <p className="mt-1 text-sm text-[#64748b]">Find a verified pro and schedule your next job.</p>
+          <Link
+            to="/search"
+            className="mt-5 inline-flex h-11 items-center rounded-xl bg-[#5b46f5] px-5 text-sm font-bold text-white"
+          >
             Find a Pro
           </Link>
         </div>
@@ -117,18 +122,24 @@ export default function CustomerBookings() {
             const price = b.final_price ?? b.quoted_price;
             const serviceId = b.service?.id;
             return (
-              <article key={b.id} className="rounded-2xl border border-[#E6EEF7] bg-white p-5 shadow-[0_8px_24px_rgba(7,26,58,0.05)]">
-                <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                  <div className="size-14 rounded-2xl bg-[#EEF4FB] text-navy font-bold grid place-items-center shrink-0">
+              <article
+                key={b.id}
+                className="rounded-[24px] border border-[#E7EAF0] bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)]"
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                  <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[#EDE9FE] text-lg font-bold text-[#6D28D9]">
                     {b.provider.business_name[0]}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <Link to={`/providers/${b.provider_id}`} className="font-bold text-[15px] hover:text-blue">
+                        <Link
+                          to={`/account/bookings/${b.id}`}
+                          className="text-[15px] font-bold text-[#0b1220] hover:text-[#5b46f5]"
+                        >
                           {b.provider.business_name}
                         </Link>
-                        <p className="text-sm text-slate mt-0.5">{b.service.title}</p>
+                        <p className="mt-0.5 text-sm text-[#64748b]">{b.service.title}</p>
                       </div>
                       <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${meta.className}`}>
                         {meta.label}
@@ -137,17 +148,17 @@ export default function CustomerBookings() {
 
                     <dl className="mt-3 grid sm:grid-cols-3 gap-3 text-sm">
                       <div>
-                        <dt className="text-[11px] uppercase tracking-wide text-slate font-semibold">When</dt>
+                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#94A3B8]">When</dt>
                         <dd className="mt-0.5 font-medium tabular-nums">
                           {b.scheduled_date} · {b.scheduled_time}
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-[11px] uppercase tracking-wide text-slate font-semibold">Where</dt>
+                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#94A3B8]">Where</dt>
                         <dd className="mt-0.5 font-medium truncate">{b.address_line}</dd>
                       </div>
                       <div>
-                        <dt className="text-[11px] uppercase tracking-wide text-slate font-semibold">Payment</dt>
+                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#94A3B8]">Payment</dt>
                         <dd className="mt-0.5 font-medium capitalize">
                           {b.payment_status}
                           {price != null && <span className="tabular-nums"> · ${Number(price).toFixed(2)}</span>}
@@ -160,16 +171,24 @@ export default function CustomerBookings() {
                     )}
 
                     <div className="mt-4 flex flex-wrap gap-2">
+                      {b.payment_status !== "paid" && b.status !== "cancelled" && (
+                        <Link
+                          to={`/pay?purpose=booking&booking_id=${b.id}`}
+                          className="inline-flex h-10 items-center rounded-xl bg-[#5b46f5] px-4 text-sm font-semibold text-white"
+                        >
+                          Pay now
+                        </Link>
+                      )}
                       <Link
-                        to={`/providers/${b.provider_id}`}
-                        className="h-10 px-4 rounded-xl border border-[#D7E3F0] text-sm font-semibold inline-flex items-center hover:bg-[#F5F8FC]"
+                        to={`/account/bookings/${b.id}`}
+                        className="inline-flex h-10 items-center rounded-xl border border-[#E7EAF0] bg-white px-4 text-sm font-semibold text-[#334155]"
                       >
-                        View Pro
+                        Details
                       </Link>
                       {serviceId && (
                         <Link
                           to={`/book/${b.provider_id}/${serviceId}`}
-                          className="h-10 px-4 rounded-xl bg-brand-grad text-white text-sm font-semibold inline-flex items-center"
+                          className="inline-flex h-10 items-center rounded-xl bg-[#0b1220] px-4 text-sm font-semibold text-white"
                         >
                           Book again
                         </Link>
@@ -187,7 +206,7 @@ export default function CustomerBookings() {
                         <button
                           type="button"
                           onClick={() => setReviewingId(b.id)}
-                          className="h-10 px-4 rounded-xl text-sm font-semibold text-blue hover:bg-[#E8F7FE]"
+                          className="h-10 rounded-xl px-4 text-sm font-semibold text-[#5b46f5] hover:bg-[#F8FAFC]"
                         >
                           Leave a review
                         </button>
@@ -197,7 +216,7 @@ export default function CustomerBookings() {
                     {cancelId === b.id && (
                       <div className="mt-4 rounded-xl bg-[#FDECEC] p-4">
                         <p className="text-sm font-semibold">Cancel this booking?</p>
-                        <p className="text-sm text-slate mt-1">The pro will be notified. You can book again anytime.</p>
+                        <p className="mt-1 text-sm text-[#64748b]">The pro will be notified. You can book again anytime.</p>
                         <div className="mt-3 flex gap-2">
                           <button
                             type="button"
@@ -214,7 +233,7 @@ export default function CustomerBookings() {
                     )}
 
                     {reviewingId === b.id && (
-                      <div className="mt-4 rounded-xl bg-[#F4F7FB] p-4 space-y-3">
+                      <div className="mt-4 space-y-3 rounded-xl border border-[#E7EAF0] bg-[#F8FAFC] p-4">
                         <p className="text-sm font-semibold">How was {b.provider.business_name}?</p>
                         <div className="flex gap-1">
                           {[1, 2, 3, 4, 5].map((n) => (
@@ -233,14 +252,22 @@ export default function CustomerBookings() {
                           value={reviewForm.comment}
                           onChange={(e) => setReviewForm((f) => ({ ...f, comment: e.target.value }))}
                           placeholder="How was your experience?"
-                          className="w-full !bg-white !text-navy !border !border-[#D7E3F0] rounded-xl px-3 py-2 text-sm"
+                          className="w-full rounded-xl border border-[#E7EAF0] bg-white px-3 py-2 text-sm text-[#0b1220]"
                           rows={3}
                         />
                         <div className="flex gap-2">
-                          <button type="button" onClick={() => submitReview(b.id)} className="btn btn-primary h-9 px-4 text-sm rounded-xl">
+                          <button
+                            type="button"
+                            onClick={() => submitReview(b.id)}
+                            className="h-9 rounded-xl bg-[#5b46f5] px-4 text-sm font-semibold text-white"
+                          >
                             Submit review
                           </button>
-                          <button type="button" onClick={() => setReviewingId(null)} className="text-sm font-semibold text-slate">
+                          <button
+                            type="button"
+                            onClick={() => setReviewingId(null)}
+                            className="text-sm font-semibold text-[#64748b]"
+                          >
                             Not now
                           </button>
                         </div>

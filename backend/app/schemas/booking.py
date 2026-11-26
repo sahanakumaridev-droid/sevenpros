@@ -46,5 +46,6 @@ class BookingOut(BaseModel):
     service: ServiceOut
     provider: ProviderOut
     customer: CustomerBrief
+    job_id: str | None = None
 
     model_config = {"from_attributes": True}

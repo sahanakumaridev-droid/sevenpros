@@ -38,6 +38,17 @@ def get_current_user(
     return user
 
 
+def get_optional_user(
+    token: str | None = Depends(oauth2_scheme), db: Session = Depends(get_db)
+) -> User | None:
+    if not token:
+        return None
+    user_id = decode_access_token(token)
+    if not user_id:
+        return None
+    return db.get(User, user_id)
+
+
 def get_current_provider_user(user: User = Depends(get_current_user)) -> User:
     if not user.is_provider or not user.provider_profile:
         raise HTTPException(status_code=403, detail="You must be a registered provider to do this")

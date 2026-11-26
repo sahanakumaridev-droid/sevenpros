@@ -5,7 +5,7 @@ const client = axios.create({
 });
 
 client.interceptors.request.use((config) => {
-  const token = localStorage.getItem("sevenpros_token");
+  const token = localStorage.getItem("sevenpros_token") || sessionStorage.getItem("sevenpros_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

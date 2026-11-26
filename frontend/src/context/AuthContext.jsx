@@ -8,7 +8,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const loadMe = async () => {
-    const token = localStorage.getItem("sevenpros_token");
+    const token = localStorage.getItem("sevenpros_token") || sessionStorage.getItem("sevenpros_token");
     if (!token) {
       setLoading(false);
       return;
@@ -18,6 +18,7 @@ export function AuthProvider({ children }) {
       setUser(res.data);
     } catch {
       localStorage.removeItem("sevenpros_token");
+      sessionStorage.removeItem("sevenpros_token");
       setUser(null);
     } finally {
       setLoading(false);
@@ -28,14 +29,23 @@ export function AuthProvider({ children }) {
     loadMe();
   }, []);
 
-  const login = (token, userData) => {
-    localStorage.setItem("sevenpros_token", token);
+  const login = (token, userData, remember = true) => {
+    const store = remember ? localStorage : sessionStorage;
+    localStorage.removeItem("sevenpros_token");
+    sessionStorage.removeItem("sevenpros_token");
+    store.setItem("sevenpros_token", token);
     setUser(userData);
   };
 
   const logout = () => {
     localStorage.removeItem("sevenpros_token");
+    sessionStorage.removeItem("sevenpros_token");
     setUser(null);
+    try {
+      window.google?.accounts?.id?.disableAutoSelect?.();
+    } catch {
+      /* Google script may be absent */
+    }
   };
 
   const becomeProvider = async () => {

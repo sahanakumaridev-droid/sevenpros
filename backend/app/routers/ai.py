@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.deps import get_db
 from app.models.category import Category
+from app.models.credit import JobPost
 from app.models.provider import Provider
 from app.models.review import Review
 from app.models.service import Service
@@ -33,6 +34,7 @@ INTENT_MAP = [
 
 class ChatIn(BaseModel):
     message: str
+    role: str = ""
     history: list[dict] = []
 
 
@@ -48,9 +50,11 @@ def _intent(text: str) -> str | None:
     return None
 
 
-def _top_providers(db: Session, category_name: str | None, limit: int = 4):
+def _top_providers(db: Session, category_name: str | None, city: str | None = None, limit: int = 4):
     query = db.query(Provider).options(joinedload(Provider.services).joinedload(Service.category))
     query = query.filter(Provider.is_available.is_(True))
+    if city:
+        query = query.filter(Provider.city.ilike(f"%{city}%"))
     if category_name:
         query = query.join(Provider.services).join(Service.category).filter(Category.name == category_name)
     providers = query.distinct().limit(24).all()
@@ -81,13 +85,24 @@ def _top_providers(db: Session, category_name: str | None, limit: int = 4):
 @router.post("/chat")
 def chat(payload: ChatIn, db: Session = Depends(get_db)):
     msg = payload.message.strip()
-    intent = _intent(msg)
-    providers = _top_providers(db, intent, 3)
+    job = None
+    for token in msg.replace(",", " ").split():
+        if len(token) >= 8:
+            job = db.get(JobPost, token)
+            if job:
+                break
+    city = job.city if job and job.city else None
+    if not city and " in " in msg.lower():
+        city = msg.lower().split(" in ", 1)[1].split(",")[0].strip().title()
+    intent = job.category if job else _intent(msg)
+    providers = _top_providers(db, intent if not job else None, city, 3)
+    if job and not providers:
+        providers = _top_providers(db, None, city, 3)
     lower = msg.lower()
 
     if any(w in lower for w in ("hello", "hi ", "hey", "help")):
         reply = (
-            "Hi — I’m the SEVENPROS matchmaker. Describe the job (leak, AC, cleaning, painting…) "
+            "Hi — I’m SEVENPROS AI. Describe the job (leak, AC, cleaning, painting…) "
             "and I’ll rank verified California pros for you, 7 days a week."
         )
     elif any(w in lower for w in ("price", "cost", "how much")):
@@ -97,6 +112,8 @@ def chat(payload: ChatIn, db: Session = Depends(get_db)):
         )
     elif any(w in lower for w in ("emergency", "urgent", "now", "today")):
         reply = "For same-day help, filter Find a Pro for emergency availability. Here are fast-response matches:"
+    elif job:
+        reply = f"Job {job.title} in {job.city or city or 'California'}. Matches below use that job and city."
     elif intent:
         reply = (
             f"This sounds like **{intent}**. I ranked nearby pros using rating, response time, price, and verification — "
@@ -119,7 +136,7 @@ def chat(payload: ChatIn, db: Session = Depends(get_db)):
 @router.post("/match")
 def match(payload: MatchIn, db: Session = Depends(get_db)):
     intent = _intent(payload.query)
-    providers = _top_providers(db, intent, 6)
+    providers = _top_providers(db, intent, limit=6)
     return {"intent": intent or "General home services", "providers": providers}
 
 

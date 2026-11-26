@@ -37,8 +37,8 @@ App at http://localhost:5173 (proxies `/api` to the backend on port 8000).
 
 ### Demo logins (from the seed script)
 
-- Customer: `maria.garcia@example.com` / `password123`
-- Provider: `owner0@sevenpros-demo.com` / `password123` (use the Customer/Pro switch
+- Customer: `claire@sevenpros-demo.com` / `password123`
+- Provider: `lucas@sevenpros-demo.com` / `password123` (use the Customer/Pro switch
   in the navbar after logging in)
 
 ## What's real vs. mocked

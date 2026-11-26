@@ -12,7 +12,31 @@ const SORT_OPTIONS = [
 ];
 
 const FIELD =
-  "!bg-white !text-navy !border !border-[#D7E3F0] rounded-xl px-3 py-2.5 text-sm w-full";
+  "w-full rounded-xl border border-[#E7EAF0] bg-[#F8FAFC] px-3 py-2.5 text-sm text-[#0b1220] placeholder:text-[#64748b] outline-none focus:border-[#5b46f5]";
+
+const TRADE_POOLS = {
+  plumber: ["plumb-1", "plumb-2", "handy-1"],
+  electrician: ["elec-1", "elec-2", "handy-2"],
+  electrical: ["elec-1", "elec-3", "handy-3"],
+  electronics_repair: ["elec-2", "elec-3", "elec-1"],
+  hvac: ["hvac-1", "plumb-1", "handy-1"],
+  heating_engineer: ["hvac-1", "handy-2"],
+  cleaning: ["clean-1", "clean-2", "clean-3", "clean-4", "clean-5", "clean-6"],
+  painter: ["paint-1", "handy-3", "floor-2"],
+  paint: ["paint-1", "floor-1", "handy-2"],
+  gardener: ["garden-1", "garden-2", "clean-4"],
+  garden_centre: ["garden-2", "garden-1", "clean-5"],
+  flooring: ["floor-1", "floor-2", "handy-1"],
+  floorer: ["floor-2", "floor-1", "handy-3"],
+  handyman: ["handy-1", "handy-2", "handy-3", "floor-1"],
+};
+
+function tradePhoto(item) {
+  const pool = TRADE_POOLS[item.craft] || TRADE_POOLS.handyman;
+  let hash = 0;
+  for (const ch of item.id) hash = (hash * 33 + ch.charCodeAt(0)) >>> 0;
+  return `/trades/${pool[hash % pool.length]}.jpg`;
+}
 
 const CAT_CHIPS = [
   { name: "Plumbing", to: "/categories/plumbing", color: "#0879F9" },
@@ -28,6 +52,7 @@ const CAT_CHIPS = [
 export default function Search() {
   const [params, setParams] = useSearchParams();
   const [providers, setProviders] = useState([]);
+  const [publicListings, setPublicListings] = useState({ total: 0, listings: [], attribution: "", area: "" });
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState(params.get("q") || "");
   const [view, setView] = useState("grid");
@@ -56,10 +81,17 @@ export default function Search() {
       if (k === "max_price" && (v === "500" || v === 500)) return;
       q[k] = v;
     });
-    client.get("/search/providers", { params: q }).then((res) => {
-      setProviders(res.data);
-      setLoading(false);
-    });
+    client
+      .get("/search/providers", { params: q })
+      .then((res) => setProviders(res.data))
+      .catch(() => setProviders([]))
+      .finally(() => setLoading(false));
+    client
+      .get("/search/public", {
+        params: { q: next.q || undefined, category_slug: next.category_slug || undefined, limit: 500 },
+      })
+      .then((res) => setPublicListings(res.data))
+      .catch(() => setPublicListings({ total: 0, listings: [], attribution: "", area: "" }));
   };
 
   useEffect(() => {
@@ -114,7 +146,7 @@ export default function Search() {
   };
 
   const renderFilters = () => (
-    <form onSubmit={applyFilters} className="space-y-5 text-[#071A3A]">
+    <form onSubmit={applyFilters} className="space-y-5 text-ink">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold">Filters</h2>
         <button type="button" onClick={resetFilters} className="text-sm font-semibold text-blue">
@@ -127,7 +159,7 @@ export default function Search() {
         <div className="mt-2 space-y-2 text-sm">
           {[
             ["verified", "Verified Pro"],
-            ["licensed", "Licensed"],
+            ["licensed", "Licensed professional"],
             ["insured", "Insured"],
             ["background_checked", "Background Checked"],
           ].map(([key, label]) => (
@@ -202,10 +234,10 @@ export default function Search() {
         Apply Filters
       </button>
 
-      <div className="rounded-2xl bg-[#EEF4FB] p-4 flex items-start gap-3">
-        <img src="/avatar-sarah.png" alt="" className="size-11 rounded-full object-cover object-top bg-white shrink-0" />
+      <div className="rounded-2xl bg-overlay p-4 flex items-start gap-3">
+        <img src="/avatar-sarah.png" alt="" className="size-11 rounded-full object-cover object-top bg-raised shrink-0" />
         <div className="min-w-0">
-          <p className="text-sm font-bold text-navy">Need Help?</p>
+          <p className="text-sm font-bold text-ink">Need Help?</p>
           <p className="mt-0.5 text-[12px] text-slate">Let our AI find the right pro for you.</p>
           <button
             type="button"
@@ -220,24 +252,24 @@ export default function Search() {
   );
 
   return (
-    <div className="bg-[#F4F7FB] text-[#071A3A] min-h-full">
+    <div className="light-page bg-white text-[#14181d] min-h-full">
       <div className="container-page py-6 md:py-8 grid lg:grid-cols-[260px_minmax(0,1fr)] gap-6 md:gap-8 items-start">
         <aside className="lg:sticky lg:top-24">
-          <details className="lg:hidden rounded-2xl border border-[#E6EEF7] bg-white">
+          <details className="lg:hidden rounded-2xl border border-line bg-raised">
             <summary className="min-h-12 px-4 flex items-center font-semibold cursor-pointer">Filters</summary>
             <div className="px-4 pb-4">{renderFilters()}</div>
           </details>
-          <div className="hidden lg:block rounded-2xl border border-[#E6EEF7] bg-white p-5">{renderFilters()}</div>
+          <div className="hidden lg:block rounded-2xl border border-line bg-raised p-5">{renderFilters()}</div>
         </aside>
 
         <div className="min-w-0">
-          <section className="rounded-[28px] bg-white border border-[#E6EEF7] p-5 md:p-8 grid lg:grid-cols-[1fr_280px] gap-6 items-center shadow-[0_12px_40px_rgba(7,26,58,0.05)]">
+          <section className="rounded-[28px] bg-raised border border-line p-5 md:p-8 grid lg:grid-cols-[1fr_280px] gap-6 items-center shadow-[0_12px_40px_rgba(7,26,58,0.05)]">
             <div>
               <h1 className="font-bold tracking-[-0.03em] leading-[1.12] text-[clamp(1.75rem,4vw,2.75rem)]">
                 Find <span className="text-blue">Trusted</span> Professionals Near You
               </h1>
               <p className="mt-2 text-slate">Verified. Reviewed. Ready to help — whenever you need.</p>
-              <form onSubmit={submitHeroSearch} className="mt-5 flex items-center gap-2 rounded-full border border-[#D7E3F0] bg-white shadow-[0_8px_24px_rgba(7,26,58,0.06)] p-1.5 pl-5">
+              <form onSubmit={submitHeroSearch} className="mt-5 flex items-center gap-2 rounded-full border border-line bg-overlay shadow-[0_8px_24px_rgba(7,26,58,0.06)] p-1.5 pl-5">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <circle cx="11" cy="11" r="6.5" stroke="#64748B" strokeWidth="1.7" />
                   <path d="M16.5 16.5L21 21" stroke="#64748B" strokeWidth="1.7" strokeLinecap="round" />
@@ -246,13 +278,13 @@ export default function Search() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search for a service, e.g., 'Plumbing', 'HVAC', 'Furniture Assembly'"
-                  className="flex-1 !bg-transparent !border-0 !text-navy min-w-0 py-2.5 text-sm"
+                  className="flex-1 min-w-0 border-0 bg-transparent py-2.5 text-sm text-[#0b1220] placeholder:text-[#64748b] outline-none"
                 />
                 <button type="submit" className="h-11 shrink-0 rounded-full bg-brand-grad text-white font-semibold text-sm px-6">
                   Search
                 </button>
               </form>
-              <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-[12px] font-semibold text-navy/80">
+              <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-[12px] font-semibold text-[#334155]">
                 {[
                   ["Verified Pros", "M12 3l7 3v6c0 5-3 8-7 9-4-1-7-4-7-9V6l7-3z"],
                   ["Background Checked", "M9 12l2 2 4-4M12 3l7 3v6c0 5-3 8-7 9-4-1-7-4-7-9V6l7-3z"],
@@ -260,7 +292,7 @@ export default function Search() {
                   ["Secure & Reliable", "M12 3l7 3v6c0 5-3 8-7 9-4-1-7-4-7-9V6l7-3z"],
                 ].map(([item, d]) => (
                   <div key={item} className="flex items-center gap-1.5">
-                    <span className="size-7 rounded-full bg-[#E8F7FE] text-blue grid place-items-center shrink-0">
+                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#EFF6FF] text-[#2563eb]">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                         <path d={d} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
@@ -272,14 +304,14 @@ export default function Search() {
             </div>
 
             <div className="relative hidden lg:block h-[280px]">
-              <div className="absolute inset-0 rounded-[24px] bg-[#D7EBFA] overflow-hidden">
+              <div className="absolute inset-0 rounded-[24px] bg-overlay overflow-hidden">
                 <img
                   src="/hero-pro.png?v=logo-shirt-no-hat"
                   alt="SevenPros service professional"
                   className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[118%] w-auto object-contain"
                 />
               </div>
-              <div className="absolute -left-3 top-8 rounded-2xl bg-white px-3 py-2 shadow-[0_10px_24px_rgba(7,26,58,0.12)]">
+              <div className="absolute -left-3 top-8 rounded-2xl bg-raised px-3 py-2 shadow-[0_10px_24px_rgba(7,26,58,0.12)]">
                 <div className="text-[#F5B400] text-xs">★★★★★</div>
                 <div className="text-sm font-bold tabular-nums">4.9</div>
                 <div className="text-[11px] text-slate">10k+ Happy Customers</div>
@@ -295,7 +327,7 @@ export default function Search() {
               <Link
                 key={cat.name}
                 to={cat.to}
-                className="shrink-0 rounded-full bg-white border border-[#E6EEF7] px-3 h-9 inline-flex items-center gap-2 text-[13px] font-semibold text-navy hover:border-blue"
+                className="shrink-0 rounded-full bg-raised border border-line px-3 h-9 inline-flex items-center gap-2 text-[13px] font-semibold text-ink hover:border-blue"
               >
                 <span className="size-2.5 rounded-full" style={{ background: cat.color }} />
                 {cat.name}
@@ -311,14 +343,14 @@ export default function Search() {
 
           <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 className="text-lg font-bold">
-              {loading ? "Searching..." : `${providers.length} Professionals Found`}
+              {loading ? "Searching..." : `${providers.length} pros you can book`}
             </h2>
             <div className="flex items-center gap-2">
-              <div className="hidden sm:flex rounded-xl border border-[#E6EEF7] bg-white p-1">
+              <div className="hidden sm:flex rounded-xl border border-line bg-raised p-1">
                 <button
                   type="button"
                   onClick={() => setView("grid")}
-                  className={`size-8 rounded-lg ${view === "grid" ? "bg-[#EEF4FB] text-navy" : "text-slate"}`}
+                  className={`size-8 rounded-lg ${view === "grid" ? "bg-overlay text-ink" : "text-slate"}`}
                   aria-label="Grid view"
                 >
                   ▦
@@ -326,7 +358,7 @@ export default function Search() {
                 <button
                   type="button"
                   onClick={() => setView("list")}
-                  className={`size-8 rounded-lg ${view === "list" ? "bg-[#EEF4FB] text-navy" : "text-slate"}`}
+                  className={`size-8 rounded-lg ${view === "list" ? "bg-overlay text-ink" : "text-slate"}`}
                   aria-label="List view"
                 >
                   ☰
@@ -349,7 +381,7 @@ export default function Search() {
           {loading && (
             <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="rounded-2xl bg-white overflow-hidden border border-[#E6EEF7]">
+                <div key={i} className="rounded-2xl bg-raised overflow-hidden border border-line">
                   <div className="skeleton h-40 rounded-none" />
                   <div className="p-4 space-y-3">
                     <div className="skeleton h-4 w-2/3" />
@@ -362,10 +394,10 @@ export default function Search() {
           )}
 
           {!loading && providers.length === 0 && (
-            <div className="text-center text-slate py-20">No pros found matching your filters.</div>
+            <div className="text-center text-slate py-16">No bookable pros match those filters.</div>
           )}
 
-          {!loading && (
+          {!loading && providers.length > 0 && (
             <div
               className={`stagger-in mt-5 grid gap-5 ${
                 view === "list" ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
@@ -375,6 +407,50 @@ export default function Search() {
                 <ProviderCard key={p.id} provider={p} detailed />
               ))}
             </div>
+          )}
+
+          {publicListings.listings?.length > 0 && (
+            <section className="mt-10">
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+                <div>
+                  <h2 className="text-lg font-bold">
+                    {publicListings.total} real businesses in {publicListings.area || "this area"}
+                  </h2>
+                  <p className="text-sm text-slate">
+                    Free public listings. Names, addresses, and phones come from the map, not from SevenPros bookings.
+                  </p>
+                </div>
+                <p className="text-[12px] text-slate">{publicListings.attribution}</p>
+              </div>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {publicListings.listings.map((item) => {
+                  const place = [item.street, item.city, item.state].filter(Boolean).join(", ");
+                  const photo = tradePhoto(item);
+                  return (
+                    <article key={item.id} className="overflow-hidden rounded-2xl border border-line bg-raised shadow-[0_8px_24px_rgba(7,26,58,0.06)]">
+                      <div className="relative aspect-[16/10] bg-overlay">
+                        <img
+                          src={photo}
+                          alt=""
+                          className="absolute inset-0 h-full w-full object-cover object-top"
+                        />
+                        <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-blue shadow-sm">
+                          {item.category}
+                        </span>
+                      </div>
+                      <div className="p-4">
+                        <h3 className="font-bold text-ink leading-snug">{item.name}</h3>
+                        {place && <p className="mt-1.5 text-sm text-slate leading-snug">{place}</p>}
+                        <Link to={`/post?category=${encodeURIComponent(item.category || "")}&title=${encodeURIComponent(item.name || "")}`} className="mt-3 inline-flex h-9 items-center rounded-full bg-[#00a878] px-3 text-sm font-semibold text-white">
+                          Get quote
+                        </Link>
+                        {item.hours && <p className="mt-2 text-[12px] text-slate">{item.hours}</p>}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
           )}
         </div>
       </div>

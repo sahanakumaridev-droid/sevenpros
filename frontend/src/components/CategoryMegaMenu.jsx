@@ -1,93 +1,179 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import client from "../api/client";
+import { POPULAR_CATEGORIES } from "../data/popularCategories";
 
-function GroupButton({ group, selected, onSelect }) {
-  return (
-    <button
-      type="button"
-      onMouseEnter={onSelect}
-      onFocus={onSelect}
-      onClick={onSelect}
-      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-[14px] transition-colors duration-150 ${
-        selected
-          ? "bg-white text-navy font-semibold shadow-[inset_3px_0_0_#0879F9]"
-          : "text-navy/75 hover:bg-white/70 hover:text-navy"
-      }`}
-    >
-      <span
-        className={`size-8 rounded-lg grid place-items-center text-sm shrink-0 ${selected ? "bg-blue/10" : "bg-white"}`}
-        aria-hidden="true"
-      >
-        {group.icon}
-      </span>
-      <span className="flex-1 min-w-0 leading-tight">{group.group}</span>
-      <span className={`text-[11px] tabular-nums ${selected ? "text-blue" : "text-slate"}`}>
-        {group.categories.length}
-      </span>
-    </button>
-  );
+const PHOTOS = {
+  Plumbing: "/premium/plumbing.jpg",
+  Electrical: "/premium/electrical.jpg",
+  HVAC: "/premium/hvac.jpg",
+  Cleaning: "/premium/cleaning.jpg",
+  Handyman: "/premium/handyman.jpg",
+  "Home Services": "/premium/handyman.jpg",
+  Painting: "/premium/painting.jpg",
+  "Appliance Repair": "/premium/appliance.jpg",
+  Landscaping: "/premium/landscaping.jpg",
+  Moving: "/premium/furniture.jpg",
+};
+
+const FALLBACK_GROUPS = [
+  {
+    group: "Popular",
+    icon: "⭐",
+    categories: POPULAR_CATEGORIES.map((c, index) => ({
+      id: `local-${index}`,
+      name: c.name,
+      slug: c.slug,
+      group: "Popular",
+      is_popular: true,
+    })),
+  },
+];
+
+let cachedGroups = null;
+let prefetchPromise = null;
+
+function normalizeGroups(data) {
+  if (!Array.isArray(data) || data.length === 0) return null;
+  return data
+    .filter((g) => g?.group && Array.isArray(g.categories))
+    .map((g) => ({
+      group: g.group,
+      icon: g.icon || "🔧",
+      categories: g.categories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        group: c.group || g.group,
+        is_popular: Boolean(c.is_popular),
+      })),
+    }));
 }
 
-export default function CategoryMegaMenu({ onNavigate, variant = "desktop" }) {
-  const [groups, setGroups] = useState([]);
-  const [active, setActive] = useState(null);
+function preferredActive(groups) {
+  const preferred = ["Plumbing", "Cleaning", "Home Services", "Electrical", "HVAC"];
+  return preferred.find((name) => groups.some((g) => g.group === name)) || groups[0]?.group || null;
+}
+
+export function prefetchCategories() {
+  if (cachedGroups || prefetchPromise) return prefetchPromise;
+  prefetchPromise = client
+    .get("/categories/grouped")
+    .then((res) => {
+      const next = normalizeGroups(res.data);
+      if (next) cachedGroups = next;
+      return cachedGroups;
+    })
+    .catch(() => null);
+  return prefetchPromise;
+}
+
+export default function CategoryMegaMenu({ onNavigate, variant = "desktop", darkMobile = true }) {
+  const [groups, setGroups] = useState(() => cachedGroups || FALLBACK_GROUPS);
+  const [loading, setLoading] = useState(!cachedGroups);
+  const [active, setActive] = useState(() =>
+    variant === "mobile" ? null : preferredActive(cachedGroups || FALLBACK_GROUPS),
+  );
 
   useEffect(() => {
-    client.get("/categories/grouped").then((res) => {
-      setGroups(res.data);
-      setActive(variant === "mobile" ? null : res.data[0]?.group ?? null);
-    });
-  }, []);
+    let cancelled = false;
+    if (cachedGroups) {
+      setGroups(cachedGroups);
+      setLoading(false);
+      if (variant !== "mobile") setActive((curr) => curr || preferredActive(cachedGroups));
+      return undefined;
+    }
 
-  const activeGroup = groups.find((g) => g.group === active);
+    setLoading(true);
+    client
+      .get("/categories/grouped")
+      .then((res) => {
+        if (cancelled) return;
+        const next = normalizeGroups(res.data);
+        if (!next) return;
+        cachedGroups = next;
+        setGroups(next);
+        if (variant !== "mobile") setActive(preferredActive(next));
+      })
+      .catch(() => {
+        /* keep fallback */
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [variant]);
+
+  const activeGroup = useMemo(() => groups.find((g) => g.group === active) || groups[0], [groups, active]);
   const categories = activeGroup?.categories ?? [];
   const popular = categories.filter((c) => c.is_popular);
   const rest = categories.filter((c) => !c.is_popular);
-  const list = popular.length ? rest : categories;
+  const list = (popular.length ? [...popular, ...rest] : categories).slice(0, 12);
+  const photo = PHOTOS[activeGroup?.group] || "/categories/handyman.jpg?v=3";
+
+  const categoryTo = (c) => `/search?category=${encodeURIComponent(c.slug)}&q=${encodeURIComponent(c.name)}`;
 
   if (variant === "mobile") {
+    const label = darkMobile ? "text-white" : "text-[#0b1220]";
+    const muted = darkMobile ? "text-white/55" : "text-[#64748b]";
+    const chip = darkMobile ? "bg-white/10 text-white/70" : "bg-[#F1F5F9] text-[#64748b]";
+    const row = darkMobile ? "border-white/10" : "border-[#E8ECF1]";
+    const link = darkMobile
+      ? "text-white/85 hover:bg-white/10 hover:text-white"
+      : "text-[#334155] hover:bg-[#F8FAFC] hover:text-[#0b1220]";
+
     return (
       <div className="px-1">
+        <p className={`px-3 pb-2 pt-1 text-[11px] font-bold uppercase tracking-[0.14em] ${muted}`}>
+          Browse categories
+        </p>
+        {loading && !cachedGroups && (
+          <p className={`px-3 pb-2 text-[12px] ${muted}`}>Loading full list…</p>
+        )}
         {groups.map((g) => {
           const open = active === g.group;
           return (
-            <div key={g.group} className="border-b border-white/10">
+            <div key={g.group} className={`border-b ${row}`}>
               <button
                 type="button"
                 aria-expanded={open}
                 onClick={() => setActive(open ? null : g.group)}
-                className="w-full flex items-center gap-3 px-3 py-3.5 text-left text-white"
+                className="flex min-h-12 w-full items-center gap-3 px-3 py-3 text-left"
               >
-                <span className="text-base" aria-hidden="true">
-                  {g.icon}
+                <span className={`flex-1 text-[13px] font-bold uppercase tracking-[0.08em] ${label}`}>
+                  {g.group}
                 </span>
-                <span className="flex-1 font-semibold tracking-[0.08em] uppercase text-[13px]">{g.group}</span>
-                <span className="text-white/50 text-xs tabular-nums">{g.categories.length}</span>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${chip}`}>
+                  {g.categories.length}
+                </span>
                 <svg
                   width="12"
                   height="12"
                   viewBox="0 0 12 12"
                   fill="none"
                   aria-hidden="true"
-                  className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                  className={`${muted} transition-transform duration-200 ${open ? "rotate-180" : ""}`}
                 >
                   <path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                 </svg>
               </button>
               {open && (
-                <div className="pb-3 pl-11 pr-3 grid grid-cols-1 gap-1">
+                <ul className="space-y-1 pb-3 pl-3 pr-3">
                   {g.categories.map((c) => (
-                    <Link
-                      key={c.id}
-                      to={`/categories/${c.slug}`}
-                      onClick={onNavigate}
-                      className="min-h-11 flex items-center rounded-lg px-2 text-sm text-white/80 hover:text-white hover:bg-white/10"
-                    >
-                      {c.name}
-                    </Link>
+                    <li key={c.id}>
+                      <Link
+                        to={categoryTo(c)}
+                        onClick={onNavigate}
+                        className={`flex min-h-11 items-center rounded-xl px-3 text-[14px] font-medium transition-colors duration-150 ${link}`}
+                      >
+                        {c.name}
+                      </Link>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
             </div>
           );
@@ -97,74 +183,118 @@ export default function CategoryMegaMenu({ onNavigate, variant = "desktop" }) {
   }
 
   return (
-    <div className="popover-panel w-full bg-white text-navy rounded-2xl shadow-[0_24px_64px_rgba(7,26,58,0.18)] border border-[#E6EEF7] overflow-hidden">
-      <div className="flex flex-col md:flex-row min-h-0 max-h-[min(560px,70vh)]">
-        <div className="md:w-[240px] shrink-0 bg-[#F7F9FC] md:border-r border-[#E6EEF7] py-3 overflow-x-auto md:overflow-y-auto">
-          <p className="px-4 pb-2 text-[11px] font-semibold tracking-[0.14em] uppercase text-slate">
-            Browse by category
-          </p>
-          <div className="flex md:block min-w-max md:min-w-0">
-            {groups.map((g) => (
-              <GroupButton key={g.group} group={g} selected={active === g.group} onSelect={() => setActive(g.group)} />
-            ))}
+    <div className="w-full overflow-hidden rounded-[28px] border border-[#E8ECF1] bg-white text-[#0b1220] shadow-[0_24px_64px_rgba(7,26,58,0.16)]">
+      <div className="flex max-h-[min(640px,72vh)] min-h-[440px]">
+        <div className="w-[260px] shrink-0 overflow-y-auto border-r border-[#EEF2F7] py-5">
+          <div className="px-5 pb-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#64748b]">Browse by category</p>
+            <p className="mt-1.5 text-[13px] leading-snug text-[#94a3b8]">
+              {loading ? "Loading categories…" : "Find the right pro for your needs"}
+            </p>
           </div>
+          <ul className="space-y-1 px-2">
+            {groups.map((g) => {
+              const selected = active === g.group || (!active && g === activeGroup);
+              return (
+                <li key={g.group}>
+                  <button
+                    type="button"
+                    onMouseEnter={() => setActive(g.group)}
+                    onFocus={() => setActive(g.group)}
+                    onClick={() => setActive(g.group)}
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-[background-color,color] duration-160 ease-[cubic-bezier(0.23,1,0.32,1)] ${
+                      selected ? "bg-[#0b1220] text-white" : "text-[#0b1220] hover:bg-[#F8FAFC]"
+                    }`}
+                  >
+                    <span className="min-w-0 flex-1 text-[12px] font-bold uppercase tracking-[0.08em]">
+                      {g.group}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
+                        selected ? "bg-white/15 text-white" : "bg-[#F1F5F9] text-[#64748b]"
+                      }`}
+                    >
+                      {g.categories.length}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </div>
 
-        <div className="flex-1 min-w-0 p-4 md:p-5 overflow-y-auto">
-          <div className="flex items-end justify-between gap-4 mb-4">
-            <div className="min-w-0">
-              <h3 className="text-base md:text-lg font-bold text-navy tracking-tight">{activeGroup?.group ?? "Categories"}</h3>
-              <p className="text-sm text-slate mt-0.5">
-                {categories.length} services available in California
+        <div className="min-w-0 flex-1 overflow-y-auto p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#64748b]">Selected</p>
+              <h3 className="mt-1 text-[1.5rem] font-bold tracking-[-0.03em] text-[#0b1220]">
+                {activeGroup?.group || "Categories"}
+              </h3>
+              <p className="mt-1 text-[13px] text-[#64748b]">
+                {categories.length} services · California & Canada
               </p>
             </div>
             {activeGroup && (
               <Link
-                to={`/search?group=${encodeURIComponent(activeGroup.group)}`}
+                to={`/search?q=${encodeURIComponent(activeGroup.group)}`}
                 onClick={onNavigate}
-                className="text-sm font-semibold text-blue hover:underline shrink-0"
+                className="shrink-0 rounded-full bg-[#0b1220] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.06em] text-white transition-transform duration-160 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-[#1e293b] active:scale-[0.98]"
               >
-                View all →
+                View all
               </Link>
             )}
           </div>
 
-          {popular.length > 0 && (
-            <div className="mb-5">
-              <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-orange mb-2">Popular</p>
-              <div className="flex flex-wrap gap-2">
-                {popular.map((c) => (
-                  <Link
-                    key={c.id}
-                    to={`/categories/${c.slug}`}
-                    onClick={onNavigate}
-                    className="inline-flex items-center min-h-9 rounded-full border border-[#E6EEF7] bg-[#F7F9FC] px-3 py-1.5 text-[13px] font-medium text-navy hover:border-blue hover:text-blue"
-                  >
-                    {c.name}
-                  </Link>
-                ))}
+          <div className="mt-5 overflow-hidden rounded-2xl bg-[#F7F8FA] ring-1 ring-[#E8ECF1]">
+            <div className="grid items-center gap-4 p-4 sm:grid-cols-[1fr_auto]">
+              <div className="px-1">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#64748b]">
+                  {activeGroup?.group} services
+                </p>
+                <p className="mt-1 max-w-sm text-[14px] font-medium text-[#334155]">
+                  Book a verified local pro for {activeGroup?.group?.toLowerCase() || "this trade"}.
+                </p>
               </div>
+              <img src={photo} alt="" className="hidden h-24 w-40 rounded-xl object-cover sm:block" />
             </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-1">
-            {(list.length ? list : categories).map((c) => (
-              <Link
-                key={c.id}
-                to={`/categories/${c.slug}`}
-                onClick={onNavigate}
-                className="flex items-center min-h-11 px-2.5 rounded-lg text-[14px] font-medium text-navy hover:bg-[#F5F8FC] hover:text-blue"
-              >
-                {c.name}
-              </Link>
-            ))}
           </div>
+
+          <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.14em] text-[#64748b]">
+            Service list
+          </p>
+          <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {list.map((c) => (
+              <li key={c.id}>
+                <Link
+                  to={categoryTo(c)}
+                  onClick={onNavigate}
+                  className="group flex min-h-[48px] items-center justify-between gap-3 rounded-2xl border border-[#E8ECF1] bg-white px-4 py-3 transition-[border-color,background-color,transform] duration-160 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-[#CBD5E1] hover:bg-[#F8FAFC] active:scale-[0.99]"
+                >
+                  <span className="min-w-0 text-[14px] font-semibold tracking-[-0.01em] text-[#0b1220]">
+                    {c.name}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className="text-[#94a3b8] transition-transform duration-160 group-hover:translate-x-0.5 group-hover:text-[#0b1220]"
+                  >
+                    →
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 md:px-5 py-3 border-t border-[#E6EEF7] bg-[#F7F9FC]">
-        <p className="text-sm text-slate">500+ verified service categories across California</p>
-        <Link to="/search" onClick={onNavigate} className="text-sm font-semibold text-blue hover:underline">
+      <div className="flex items-center justify-between gap-3 border-t border-[#EEF2F7] px-6 py-3.5">
+        <p className="text-[12px] font-medium uppercase tracking-[0.08em] text-[#94a3b8]">
+          California & Canada
+        </p>
+        <Link
+          to="/search"
+          onClick={onNavigate}
+          className="text-[13px] font-bold text-[#5b46f5] transition-opacity duration-160 hover:opacity-80"
+        >
           Browse all categories →
         </Link>
       </div>

@@ -1,4 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index.py" }]
+  "env": {
+    "GOOGLE_CLIENT_ID": "868631513194-apu6g32ot0no1dhgkods6b72q7q88401.apps.googleusercontent.com",
+    "CORS_ORIGINS": "https://sevenpros.vercel.app,http://localhost:5173,http://127.0.0.1:5173"
+  }
 }

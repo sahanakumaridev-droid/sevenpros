@@ -212,8 +212,8 @@ def seed():
             print(f"Seeded provider: {business_name} ({city})")
 
         print("Seed complete.")
-        print("Demo customer login: maria.garcia@example.com / password123")
-        print("Demo provider login: owner0@sevenpros-demo.com / password123")
+        print("Demo customer login: claire@sevenpros-demo.com / password123")
+        print("Demo provider login: lucas@sevenpros-demo.com / password123")
     finally:
         db.close()
 

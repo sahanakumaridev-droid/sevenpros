@@ -84,12 +84,12 @@ const PRO_PERKS = [
 
 export default function WhySevenPros() {
   return (
-    <section className="bg-white py-14 md:py-20">
+    <section className="bg-white py-14 md:py-20 text-[#14181d]">
       <div className="container-page">
         <div className="grid lg:grid-cols-[minmax(0,1.15fr)_auto_minmax(280px,360px)] gap-10 xl:gap-12 items-center">
           <div className="min-w-0">
             <p className="text-cyan text-xs font-bold tracking-[0.18em]">WHY SEVENPROS?</p>
-            <h2 className="mt-2 text-[1.5rem] sm:text-3xl md:text-[34px] font-bold text-navy [text-wrap:pretty]">
+            <h2 className="mt-2 text-[1.5rem] sm:text-3xl md:text-[34px] font-bold text-[#14181d] [text-wrap:pretty]">
               Built for Trust. Designed for You.
             </h2>
             <p className="mt-2 text-slate max-w-md text-pretty">
@@ -99,13 +99,13 @@ export default function WhySevenPros() {
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-7">
               {FEATURES.map((item) => (
                 <div key={item.title} className="flex gap-3 min-w-0">
-                  <div className="size-11 rounded-full bg-[#E8F3FE] text-navy grid place-items-center shrink-0">
+                  <div className="size-11 rounded-full bg-overlay text-[#14181d] grid place-items-center shrink-0">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       {item.icon}
                     </svg>
                   </div>
                   <div className="min-w-0 pt-0.5">
-                    <h3 className="font-bold text-navy text-[15px] leading-snug">{item.title}</h3>
+                    <h3 className="font-bold text-[#14181d] text-[15px] leading-snug">{item.title}</h3>
                     <p className="mt-0.5 text-sm text-slate">{item.body}</p>
                   </div>
                 </div>
@@ -158,7 +158,7 @@ export default function WhySevenPros() {
 
             <Link
               to="/become-a-pro"
-              className="mt-7 flex w-full items-center justify-center min-h-12 rounded-xl bg-white px-5 text-sm font-semibold text-navy hover:bg-[#F5F8FC] active:scale-[0.98] transition-[transform,background-color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]"
+              className="mt-7 flex w-full items-center justify-center min-h-12 rounded-xl bg-white px-5 text-sm font-semibold text-[#071A3A] hover:bg-[#F5F8FC] active:scale-[0.98] transition-[transform,background-color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]"
             >
               Join as a Pro →
             </Link>

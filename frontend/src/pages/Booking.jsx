@@ -1,268 +1,275 @@
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import client from "../api/client";
+import { useAuth } from "../context/AuthContext";
 
-const STEPS = ["Details", "Payment", "Confirmed"];
+const PHOTOS = {
+  plumbing: "/categories/plumbing.jpg?v=2",
+  electrical: "/categories/electrical.jpg?v=2",
+  hvac: "/categories/hvac.jpg?v=2",
+  cleaning: "/categories/cleaning.jpg?v=2",
+  painting: "/categories/painting.jpg?v=2",
+  landscaping: "/categories/landscaping.jpg?v=2",
+  handyman: "/categories/handyman.jpg?v=2",
+  appliance: "/categories/appliance-repair.jpg?v=2",
+};
 
-function tomorrow() {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+function photoFor(service) {
+  const text = `${service?.title || ""} ${service?.category?.name || ""}`.toLowerCase();
+  const key = Object.keys(PHOTOS).find((name) => text.includes(name));
+  return PHOTOS[key] || "/categories/handyman.jpg?v=2";
 }
 
 export default function Booking() {
   const { providerId, serviceId } = useParams();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [provider, setProvider] = useState(null);
   const [service, setService] = useState(null);
-  const [step, setStep] = useState(1);
-  const [booking, setBooking] = useState(null);
-  const [error, setError] = useState("");
+  const [offer, setOffer] = useState("");
+  const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
-
-  const [form, setForm] = useState({
-    scheduled_date: tomorrow(),
-    scheduled_time: "10:00",
-    address_line: "1250 Market St, San Francisco, CA 94102",
-    notes: "",
-    is_emergency: false,
-  });
-  const [payment, setPayment] = useState({
-    tip: 0,
-    coupon_code: "",
-    card: "4242 4242 4242 4242",
-    name: "Maria Garcia",
-    expiry: "12/28",
-    cvc: "123",
-  });
+  const [contact, setContact] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [chat, setChat] = useState("");
+  const [showChat, setShowChat] = useState(false);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [lightbox, setLightbox] = useState(false);
 
   useEffect(() => {
     client.get(`/providers/${providerId}`).then((res) => {
       setProvider(res.data);
-      setService(res.data.services.find((s) => s.id === serviceId) || res.data.services[0]);
+      const found = res.data.services.find((item) => item.id === serviceId) || res.data.services[0];
+      setService(found);
+      if (found?.price_min) setOffer(String(found.price_min));
     });
   }, [providerId, serviceId]);
 
-  const subtotal = useMemo(() => service?.price_min || 0, [service]);
-  const total = subtotal + Number(payment.tip || 0);
+  const loadContact = () => {
+    client.get(`/credits/member/${providerId}`).then((res) => setContact(res.data)).catch(() => {});
+  };
+  useEffect(loadContact, [providerId, user]);
 
-  const submitBooking = async (e) => {
-    e.preventDefault();
-    setError("");
-    setBusy(true);
+  const openContact = async () => {
+    if (!user) {
+      navigate(`/login?next=/book/${providerId}/${serviceId}`);
+      return null;
+    }
+    if (contact?.opened) return contact;
+    const res = await client.post(`/credits/member/${providerId}/open`);
+    setContact(res.data);
+    return res.data;
+  };
+
+  const startChat = async () => {
+    setNote("");
     try {
-      const res = await client.post("/bookings", {
-        provider_id: providerId,
-        service_id: service.id,
-        ...form,
-      });
-      setBooking(res.data);
-      setStep(2);
+      const next = await openContact();
+      if (!next) return;
+      setShowChat(true);
+      const thread = encodeURIComponent(next.thread);
+      const rows = await client.get(`/credits/messages/${thread}`);
+      setMessages(rows.data);
     } catch (err) {
-      setError(err.response?.data?.detail || "Could not create booking. Sign in and try again.");
-    } finally {
-      setBusy(false);
+      setNote(err.response?.data?.detail || "Could not open chat");
     }
   };
 
-  const submitPayment = async (e) => {
+  const call = async () => {
+    setNote("");
+    try {
+      const next = await openContact();
+      if (next?.phone) window.location.href = `tel:${next.phone}`;
+      else setNote("No phone on this account");
+    } catch (err) {
+      setNote(err.response?.data?.detail || "Could not open the number");
+    }
+  };
+
+  const sendChat = async (e) => {
     e.preventDefault();
-    setError("");
-    if ((payment.card || "").replace(/\s/g, "").length < 12) {
-      setError("Enter a demo card number (4242 4242 4242 4242).");
+    if (!chat.trim() || !contact?.thread) return;
+    await client.post("/credits/messages", { job_id: contact.thread, body: chat.trim() });
+    setChat("");
+    const rows = await client.get(`/credits/messages/${encodeURIComponent(contact.thread)}`);
+    setMessages(rows.data);
+  };
+
+  const bookNow = async () => {
+    if (!user) {
+      navigate(`/login?next=/book/${providerId}/${serviceId}`);
       return;
     }
     setBusy(true);
+    setNote("");
     try {
-      await client.post("/payments/charge", {
-        booking_id: booking.id,
-        amount: booking.quoted_price || subtotal,
-        tip: Number(payment.tip) || 0,
-        coupon_code: payment.coupon_code || null,
-        method: "demo_card",
+      const today = new Date();
+      const date = today.toISOString().slice(0, 10);
+      const res = await client.post("/bookings", {
+        provider_id: providerId,
+        service_id: service.id,
+        scheduled_date: date,
+        scheduled_time: "10:00",
+        address_line: provider.city ? `${provider.city}, CA` : "Address TBD",
+        notes: `Booked from service page. Customer offer reference: $${Number(offer) || service.price_min || 0}`,
+        is_emergency: false,
       });
-      setStep(3);
+      navigate(`/pay?purpose=booking&booking_id=${res.data.id}`);
     } catch (err) {
-      setError(err.response?.data?.detail || "Payment failed. Please try again.");
+      setNote(err.response?.data?.detail || "Could not create booking");
     } finally {
       setBusy(false);
     }
   };
 
-  if (!provider || !service) return <div className="container-page py-16 text-faint">Loading checkout…</div>;
+  const sendOffer = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      navigate(`/login?next=/book/${providerId}/${serviceId}`);
+      return;
+    }
+    setBusy(true);
+    setNote("");
+    try {
+      const res = await client.post("/credits/posts", {
+        title: service.title,
+        description: `Offer for ${provider.business_name}. ${service.description || ""}`.trim(),
+        category: service.category?.name || service.title,
+        city: provider.city || "",
+        zip_code: "",
+        kind: "request",
+        price: Number(offer) || service.price_min || 0,
+      });
+      navigate(`/listings/${res.data.id}`);
+    } catch (err) {
+      setNote(err.response?.data?.detail || "Sign in to send an offer");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!provider || !service) {
+    return <div className="container-page py-16 text-sm text-[#5c6770]">Loading listing…</div>;
+  }
+
+  const price = service.price_type === "quote" ? "Make an offer" : `$${service.price_min}${service.price_max ? ` – $${service.price_max}` : ""}`;
+  const photos = [photoFor(service)];
+  if (provider.cover_image_url && !photos.includes(provider.cover_image_url)) {
+    photos.push(provider.cover_image_url);
+  }
+  const stages = ["Service", "Detail", "Result"];
+  const current = photos[photoIndex] || photos[0];
+  const shift = (step) => setPhotoIndex((index) => (index + step + photos.length) % photos.length);
 
   return (
-    <div className="container-page py-10 max-w-2xl">
-      <Link viewTransition to={`/providers/${providerId}`} className="text-sm text-cyan hover:underline">
-        ← Back to listing
-      </Link>
-      <h1 className="mt-3 text-2xl font-bold">Complete your booking</h1>
-      <p className="text-muted text-sm mt-1">Listing → details → payment. Demo checkout — no real charge.</p>
-
-      <div className="flex items-center gap-2 my-8 text-sm overflow-x-auto">
-        {STEPS.map((label, i) => (
-          <div key={label} className="flex items-center gap-2 shrink-0">
-            <div
-              className={`size-7 rounded-full grid place-items-center text-xs font-bold ${
-                step > i ? "bg-brand-grad text-white" : "bg-overlay text-faint"
-              }`}
-            >
-              {i + 1}
-            </div>
-            <span className={step > i ? "font-medium" : "text-faint"}>{label}</span>
-            {i < 2 && <span className="w-8 h-px bg-line mx-1" />}
+    <div className="bg-[#f7f8fb] text-[#14181d]">
+      <div className="container-page grid items-start gap-6 py-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.8fr)]">
+        <div>
+          <div className="relative overflow-hidden rounded-2xl bg-[#e8edf2]">
+            <img src={current} alt="" className="aspect-[16/10] w-full object-cover object-top" />
+            <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1 text-xs font-bold">{stages[photoIndex % stages.length]}</span>
+            <span className="absolute bottom-3 right-3 rounded-full bg-black/55 px-2.5 py-1 text-xs font-semibold text-white">{photoIndex + 1}/{photos.length}</span>
+            <button type="button" onClick={() => shift(-1)} aria-label="Previous photo" className="absolute left-3 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full bg-white text-lg shadow">‹</button>
+            <button type="button" onClick={() => shift(1)} aria-label="Next photo" className="absolute right-3 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full bg-white text-lg shadow">›</button>
+            <button type="button" onClick={() => setLightbox(true)} className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-white text-sm shadow" aria-label="Open photos">⤢</button>
           </div>
-        ))}
-      </div>
-
-      <div className="card p-5 mb-6">
-        <div className="font-semibold">{provider.business_name}</div>
-        <div className="text-sm text-muted">{service.title}</div>
-        <div className="text-sm text-cyan mt-1 tabular-nums">
-          {service.price_type === "quote" ? "Free quote" : `$${service.price_min}${service.price_max ? `–$${service.price_max}` : ""}`}
+          <div className="mt-3 flex gap-2 overflow-x-auto">
+            {photos.map((src, index) => (
+              <button key={src} type="button" onClick={() => setPhotoIndex(index)} className={`relative h-16 w-24 shrink-0 overflow-hidden rounded-xl ${index === photoIndex ? "ring-2 ring-[#2563eb]" : ""}`}>
+                <img src={src} alt="" className="h-full w-full object-cover object-top" />
+                <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 text-[10px] font-bold text-white">{stages[index % stages.length]}</span>
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => setLightbox(true)} className="mt-3 text-sm font-bold text-[#2563eb]">View all photos · {photos.length} items</button>
         </div>
-      </div>
 
-      {error && (
-        <div className="bg-[#2a1c14] text-danger text-sm rounded-md px-4 py-3 mb-4" role="alert">
-          {error}
-        </div>
-      )}
+        <div className="rounded-2xl bg-white p-5 shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+          <p className="text-[34px] font-bold leading-none tracking-[-0.03em]">{price}</p>
+          <h1 className="mt-3 text-[26px] font-bold leading-snug">{service.title}</h1>
+          <p className="mt-2 text-[15px] font-medium">{[provider.city, "California"].filter(Boolean).join(", ")}</p>
+          <p className="mt-3 text-[15px] leading-6">{service.description || `${provider.business_name} offers this service.`}</p>
 
-      {step === 1 && (
-        <form onSubmit={submitBooking} className="step-panel space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-muted">Date</label>
-              <input
-                type="date"
-                required
-                value={form.scheduled_date}
-                onChange={(e) => setForm((f) => ({ ...f, scheduled_date: e.target.value }))}
-                className="mt-1 w-full border px-3 py-2.5 text-base"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted">Time</label>
-              <input
-                type="time"
-                required
-                value={form.scheduled_time}
-                onChange={(e) => setForm((f) => ({ ...f, scheduled_time: e.target.value }))}
-                className="mt-1 w-full border px-3 py-2.5 text-base"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-muted">Service address</label>
-            <input
-              required
-              value={form.address_line}
-              onChange={(e) => setForm((f) => ({ ...f, address_line: e.target.value }))}
-              className="mt-1 w-full border px-3 py-2.5 text-base"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-muted">Notes for the pro</label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              rows={3}
-              className="mt-1 w-full border px-3 py-2.5 text-base"
-            />
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.is_emergency}
-              onChange={(e) => setForm((f) => ({ ...f, is_emergency: e.target.checked }))}
-            />
-            Emergency / same-day request
-          </label>
-          <button type="submit" disabled={busy} className="btn btn-primary w-full h-12 rounded-xl">
-            {busy ? "Saving…" : "Continue to payment"}
-          </button>
-        </form>
-      )}
-
-      {step === 2 && (
-        <form onSubmit={submitPayment} className="step-panel space-y-4">
-          <div className="rounded-xl border border-line p-4 text-sm text-muted">
-            Demo card is prefilled. Use <span className="font-mono text-ink">4242 4242 4242 4242</span> — nothing is charged.
-          </div>
-          <div>
-            <label className="text-sm font-medium text-muted">Name on card</label>
-            <input
-              required
-              value={payment.name}
-              onChange={(e) => setPayment((p) => ({ ...p, name: e.target.value }))}
-              className="mt-1 w-full border px-3 py-2.5 text-base"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-muted">Card number</label>
-            <input
-              required
-              inputMode="numeric"
-              value={payment.card}
-              onChange={(e) => setPayment((p) => ({ ...p, card: e.target.value }))}
-              className="mt-1 w-full border px-3 py-2.5 text-base font-mono"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-muted">Expiry</label>
-              <input
-                required
-                value={payment.expiry}
-                onChange={(e) => setPayment((p) => ({ ...p, expiry: e.target.value }))}
-                className="mt-1 w-full border px-3 py-2.5 text-base"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted">CVC</label>
-              <input
-                required
-                value={payment.cvc}
-                onChange={(e) => setPayment((p) => ({ ...p, cvc: e.target.value }))}
-                className="mt-1 w-full border px-3 py-2.5 text-base"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-muted">Tip (optional)</label>
-            <input
-              type="number"
-              min="0"
-              value={payment.tip}
-              onChange={(e) => setPayment((p) => ({ ...p, tip: e.target.value }))}
-              className="mt-1 w-full border px-3 py-2.5 text-base"
-            />
-          </div>
-          <div className="flex justify-between text-sm font-semibold pt-2 border-t border-line">
-            <span>Total due</span>
-            <span className="tabular-nums">${total.toFixed(2)}</span>
-          </div>
-          <button type="submit" disabled={busy} className="btn btn-primary w-full h-12 rounded-xl">
-            {busy ? "Processing…" : `Pay $${total.toFixed(2)}`}
-          </button>
-        </form>
-      )}
-
-      {step === 3 && (
-        <div className="step-panel text-center py-10 card px-6">
-          <img src="/logo-mark.png" alt="" className="size-14 rounded-xl mx-auto mb-4" />
-          <h2 className="text-xl font-bold mb-2">Booking confirmed</h2>
-          <p className="text-muted mb-6">
-            {provider.business_name} will confirm your {service.title.toLowerCase()} visit. Payment status: paid (demo).
+          <Link to={`/providers/${provider.id}`} className="mt-5 flex items-center gap-3 rounded-2xl border border-[#e7eaf0] bg-[#f8fafc] p-3">
+            <span className="grid size-12 place-items-center rounded-full bg-[#14181d] text-lg font-bold text-white">{provider.business_name?.[0] || "P"}</span>
+            <span>
+              <span className="block font-bold">{provider.business_name}</span>
+              <span className="text-sm text-[#5c6770]">Seller</span>
+            </span>
+          </Link>
+          <p className="mt-4 text-[15px] font-semibold">Phone {contact?.opened ? contact.phone || "not on file" : contact?.phone_hint || "not on file"}</p>
+          <p className="text-[15px] font-semibold">Email {contact?.opened ? contact.email || "not on file" : contact?.email_hint || "not on file"}</p>
+          <p className="mt-1 text-sm text-[#5c6770]">
+            {contact?.opened
+              ? "Full contact unlocked for this pro."
+              : contact?.free_contacts_left > 0
+                ? `${contact.free_contacts_left} of 3 free contacts left — chat or call unlocks this pro at no credit cost.`
+                : contact?.next_contact_cost
+                  ? `After your 3 free contacts, each chat/call uses ${contact.next_contact_cost} credit (balance ${contact?.balance ?? 0}).`
+                  : "Sign in to chat or call. Contact stays masked until you open it."}
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button type="button" onClick={() => navigate("/account/bookings")} className="btn btn-primary px-6 h-11 rounded-xl">
-              View my bookings
-            </button>
-            <Link viewTransition to="/" className="inline-flex items-center justify-center h-11 px-6 rounded-xl border border-line font-semibold text-sm">
-              Back home
-            </Link>
+
+          <button
+            type="button"
+            disabled={busy}
+            onClick={bookNow}
+            className="mt-5 h-12 w-full rounded-xl bg-[#0b1220] text-[16px] font-bold text-white active:scale-[0.99] disabled:opacity-60"
+          >
+            {busy ? "Booking…" : "Book now & pay"}
+          </button>
+          <button type="button" onClick={startChat} className="mt-2 h-12 w-full rounded-xl bg-[#2563eb] text-[16px] font-bold text-white active:scale-[0.99]">
+            Chat
+          </button>
+          <form onSubmit={sendOffer} className="mt-4">
+            <p className="text-[15px] font-bold">Or post a job offer</p>
+            <label className="mt-2 flex h-12 items-center rounded-xl border border-[#cfd4da] px-3 text-[18px] font-bold">
+              $
+              <input value={offer} onChange={(e) => setOffer(e.target.value)} inputMode="decimal" className="ml-2 h-full min-w-0 flex-1 border-0 bg-transparent text-[#14181d] outline-none" />
+            </label>
+            <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+              <button type="submit" disabled={busy} className="h-12 rounded-xl border-2 border-[#2563eb] text-[16px] font-bold text-[#2563eb] active:scale-[0.99]">
+                {busy ? "Sending…" : "Send offer"}
+              </button>
+              <button type="button" onClick={call} className="h-12 rounded-xl border border-[#d7dbe0] px-4 text-[16px] font-bold">
+                Call
+              </button>
+            </div>
+          </form>
+          {showChat && (
+            <div className="mt-4">
+              <div className="max-h-40 space-y-2 overflow-auto">
+                {messages.map((row) => (
+                  <p key={row.id} className={`rounded-md px-3 py-2 text-sm text-[#14181d] ${row.mine ? "bg-[#e8f0ff]" : "bg-[#f3f4f6]"}`}>{row.body}</p>
+                ))}
+              </div>
+              <form onSubmit={sendChat} className="mt-2 flex gap-2">
+                <input value={chat} onChange={(e) => setChat(e.target.value)} placeholder="Message" className="h-11 flex-1 rounded-md border border-[#cfd4da] px-3 text-[#14181d]" />
+                <button className="h-11 rounded-md bg-[#14181d] px-3 text-sm font-bold text-white">Send</button>
+              </form>
+            </div>
+          )}
+          {note && <p className="mt-3 text-sm font-medium text-[#9a3412]">{note}</p>}
+        </div>
+      </div>
+      {lightbox && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-[#0b1220]/80 p-4" onClick={() => setLightbox(false)}>
+          <div className="w-full max-w-4xl" onClick={(event) => event.stopPropagation()}>
+            <div className="mb-2 flex items-center justify-between text-sm text-white">
+              <span>{service.title} · {photoIndex + 1}/{photos.length}</span>
+              <button type="button" onClick={() => setLightbox(false)} className="size-9 rounded-full bg-white/10">✕</button>
+            </div>
+            <div className="relative overflow-hidden rounded-2xl bg-black">
+              <img src={current} alt="" className="max-h-[70vh] w-full object-contain" />
+              <button type="button" onClick={() => shift(-1)} className="absolute left-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white text-lg">‹</button>
+              <button type="button" onClick={() => shift(1)} className="absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white text-lg">›</button>
+            </div>
+            <div className="mt-3 flex gap-2 overflow-x-auto">
+              {photos.map((src, index) => (
+                <button key={`${src}-full`} type="button" onClick={() => setPhotoIndex(index)} className={`h-14 w-20 shrink-0 overflow-hidden rounded-lg ${index === photoIndex ? "ring-2 ring-white" : ""}`}>
+                  <img src={src} alt="" className="h-full w-full object-cover object-top" />
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

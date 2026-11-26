@@ -12,6 +12,7 @@ class UserOut(BaseModel):
     is_provider: bool
     active_mode: str
     is_verified: bool
+    is_admin: bool = False
     language: str
     dark_mode: bool
     notifications_enabled: bool
@@ -21,16 +22,31 @@ class UserOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CompanyRegisterIn(BaseModel):
+    business_name: str = Field(min_length=2)
+    city: str = Field(min_length=2)
+    street: str | None = None
+    phone: str | None = None
+    license_number: str | None = None
+    website: str | None = None
+
+
 class SignupEmail(BaseModel):
     full_name: str
     email: EmailStr
     password: str = Field(min_length=6)
+    phone: str | None = None
     referral_code: str | None = None
 
 
 class LoginEmail(BaseModel):
     email: EmailStr
     password: str
+
+
+class EmailLoginVerify(BaseModel):
+    email: EmailStr
+    code: str
 
 
 class DemoLoginIn(BaseModel):

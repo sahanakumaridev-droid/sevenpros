@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Button from "../ui/Button";
 
 export default function HeroSearch() {
   const navigate = useNavigate();
@@ -18,11 +17,11 @@ export default function HeroSearch() {
   return (
     <form
       onSubmit={submit}
-      className="hero-search w-full rounded-[20px] bg-white p-2 sm:p-2.5 shadow-[0_18px_50px_rgba(7,26,58,0.28)]"
+      className="hero-search w-full rounded-[22px] bg-white p-2 sm:p-2.5 shadow-[0_24px_60px_rgba(7,26,58,0.4)]"
     >
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:items-stretch">
-        <div className="flex-1 min-w-0 px-3 py-2 sm:py-2.5">
-          <label htmlFor="hero-zip" className="block text-[11px] font-semibold uppercase tracking-wide text-slate">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-0">
+        <div className="min-w-0 flex-1 px-3 py-2 sm:py-2.5">
+          <label htmlFor="hero-zip" className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">
             ZIP code
           </label>
           <div className="mt-1 flex items-center gap-2">
@@ -45,10 +44,10 @@ export default function HeroSearch() {
             />
           </div>
         </div>
-        <div className="hidden sm:block w-px my-2 bg-[#E6EEF7]" />
-        <div className="flex-[1.4] min-w-0 px-3 py-2 sm:py-2.5">
-          <label htmlFor="hero-service" className="block text-[11px] font-semibold uppercase tracking-wide text-slate">
-            Service
+        <div className="my-2 hidden w-px bg-[#E6EEF7] sm:block" />
+        <div className="min-w-0 flex-[1.45] px-3 py-2 sm:py-2.5">
+          <label htmlFor="hero-service" className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">
+            Services
           </label>
           <div className="mt-1 flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -59,14 +58,18 @@ export default function HeroSearch() {
               id="hero-service"
               value={service}
               onChange={(e) => setService(e.target.value)}
-              placeholder="What service do you need?"
+              placeholder="What services do you need?"
               className="field-light w-full text-base outline-none"
             />
           </div>
         </div>
-        <Button type="submit" className="w-full sm:w-auto sm:self-stretch sm:min-w-[148px] rounded-[14px] h-12 sm:h-auto">
+        <button
+          type="submit"
+          className="inline-flex h-12 w-full items-center justify-center gap-1.5 rounded-[14px] bg-gradient-to-r from-[#3b82f6] via-[#4f46e5] to-[#7c3aed] px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(79,70,229,0.4)] transition-[filter,transform] duration-160 ease-[cubic-bezier(0.23,1,0.32,1)] hover:brightness-110 active:scale-[0.98] sm:h-auto sm:min-w-[148px] sm:w-auto sm:self-stretch"
+        >
           Search Pros
-        </Button>
+          <span aria-hidden="true">›</span>
+        </button>
       </div>
     </form>
   );

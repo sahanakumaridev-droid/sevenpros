@@ -25,10 +25,11 @@ function Arrow({ side, disabled, onClick }) {
   );
 }
 
-export default function Carousel({ children, ariaLabel }) {
+export default function Carousel({ children, ariaLabel, autoPlay = false, intervalMs = 4200 }) {
   const scroller = useRef(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
+  const [paused, setPaused] = useState(false);
 
   const update = () => {
     const el = scroller.current;
@@ -57,11 +58,32 @@ export default function Carousel({ children, ariaLabel }) {
     const gap = 16;
     const step = card ? card.getBoundingClientRect().width + gap : el.clientWidth * 0.75;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollBy({ left: dir * step * 2, behavior: reduce ? "auto" : "smooth" });
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 12;
+    if (dir > 0 && atEnd) {
+      el.scrollTo({ left: 0, behavior: reduce ? "auto" : "smooth" });
+      return;
+    }
+    el.scrollBy({ left: dir * step, behavior: reduce ? "auto" : "smooth" });
   };
 
+  useEffect(() => {
+    if (!autoPlay || paused) return undefined;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) return undefined;
+    const id = window.setInterval(() => go(1), intervalMs);
+    return () => window.clearInterval(id);
+  }, [autoPlay, paused, intervalMs, children]);
+
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false);
+      }}
+    >
       <div
         ref={scroller}
         aria-label={ariaLabel}
@@ -70,7 +92,7 @@ export default function Carousel({ children, ariaLabel }) {
         {children}
       </div>
       <Arrow side="left" disabled={!canPrev} onClick={() => go(-1)} />
-      <Arrow side="right" disabled={!canNext} onClick={() => go(1)} />
+      <Arrow side="right" disabled={!canNext && !autoPlay} onClick={() => go(1)} />
     </div>
   );
 }
